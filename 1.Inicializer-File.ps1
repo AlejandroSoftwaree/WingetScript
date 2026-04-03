@@ -61,6 +61,9 @@ function Inicializer-Function{
     Write-Host "Instalando Powershell 7" -ForegroundColor Cyan
     winget install -e --id Microsoft.PowerShell
 
+    Write-Host "Instalando Node.js 22" -ForegroundColor Cyan
+    winget install -e --id OpenJS.NodeJS.22
+
     Write-Host "Aplicando configuraciones Winget" -ForegroundColor Cyan
     winget settings
 
