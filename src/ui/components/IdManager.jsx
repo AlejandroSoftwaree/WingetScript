@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
 import SelectInput from 'ink-select-input';
 import { getProgramData, addProgramId, addCategory, removeProgramId, updateProgramId, formatJsonValues } from '../../core/jsonLoader.js';
+import theme from '../../core/theme.json';
 
 const IdManager = ({ command, onFinished }) => {
   const { action, value1, value2 } = command;
@@ -80,17 +81,17 @@ const IdManager = ({ command, onFinished }) => {
     }
   }, [action, value1, value2]);
 
-  if (!data) return <Text color="yellow">Cargando datos...</Text>;
+  if (!data) return <Text color={theme.text.warning}>Cargando datos...</Text>;
 
   // Lógica para /id list
   if (action === 'list') {
     return (
-      <Box flexDirection="column" marginTop={1} paddingY={1} borderStyle="round" borderColor="gray" marginX={1} width={process.stdout.columns - 4} paddingX={1} marginBottom={1}>
-        <Text color="cyan" bold underline>LISTA DE PROGRAMAS (IDs)</Text>
+      <Box flexDirection="column" marginTop={1} paddingY={1} borderStyle="round" borderColor={theme.borders.default} marginX={1} width={process.stdout.columns - 4} paddingX={1} marginBottom={1}>
+        <Text color={theme.text.secondary} bold>LISTA DE PROGRAMAS (IDs)</Text>
         <Box flexDirection="row" marginTop={1} marginBottom={1}>
-          <Box width={25} flexShrink={0}><Text bold color="yellow">Categoría</Text></Box>
-          <Box width={12} flexShrink={0}><Text bold color="yellow">Cant.</Text></Box>
-          <Box flexShrink={1} flexGrow={1}><Text bold color="yellow">ID</Text></Box>
+          <Box width={25} flexShrink={0}><Text bold color={theme.text.warning}>Categoría</Text></Box>
+          <Box width={12} flexShrink={0}><Text bold color={theme.text.warning}>Cant.</Text></Box>
+          <Box flexShrink={1} flexGrow={1}><Text bold color={theme.text.warning}>ID</Text></Box>
         </Box>
         {Object.keys(data).map(cat => (
           <Box flexDirection="row" key={cat} marginBottom={1}>
@@ -127,9 +128,9 @@ const IdManager = ({ command, onFinished }) => {
 
     return (
       <Box flexDirection="column" marginTop={1}>
-        <Text color="cyan">¿A qué categoría deseas agregar el ID '{value1}'?</Text>
+        <Text color={theme.text.secondary}>¿A qué categoría deseas agregar el ID '{value1}'?</Text>
         {statusMsg ? (
-          <Text color={isSuccess ? 'green' : 'red'}>{statusMsg}</Text>
+          <Text color={isSuccess ? theme.text.success : theme.text.danger}>{statusMsg}</Text>
         ) : (
           <Box marginLeft={2} marginTop={1}>
             <SelectInput items={categoryOptions} onSelect={handleSelectCategory} />
@@ -142,7 +143,7 @@ const IdManager = ({ command, onFinished }) => {
   // Fallback genérico para acciones silenciosas (ej: format, action sin select)
   return (
     <Box flexDirection="column" marginTop={2}>
-      {statusMsg && <Text color={isSuccess ? 'green' : 'red'}>{statusMsg}</Text>}
+      {statusMsg && <Text color={isSuccess ? theme.text.success : theme.text.danger}>{statusMsg}</Text>}
     </Box>
   );
 };

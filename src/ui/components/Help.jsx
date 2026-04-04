@@ -1,5 +1,6 @@
 import React from 'react';
 import { Box, Text } from 'ink';
+import theme from '../../core/theme.json';
 
 const Help = () => {
   const commands = [
@@ -30,14 +31,14 @@ const Help = () => {
   ];
 
   return (
-    <Box flexDirection="column" paddingY={1} borderStyle="round" borderColor="gray" marginX={1} width={process.stdout.columns - 4} paddingX={1} marginBottom={1}>
-      <Text color="cyan" bold underline>LISTADO DE COMANDOS DISPONIBLES</Text>
+    <Box flexDirection="column" paddingY={1} borderStyle="round" borderColor={theme.borders.default} marginX={1} width={process.stdout.columns - 4} paddingX={1} marginBottom={1}>
+      <Text color={theme.text.secondary} bold>LISTADO DE COMANDOS DISPONIBLES</Text>
       {commands.map((cmd) => (
         <Box key={cmd.name} flexDirection="column" marginTop={1}>
-          <Text bold color="yellow">/{cmd.name} <Text dimColor>- {cmd.desc}</Text></Text>
+          <Text bold color={theme.text.warning}>/{cmd.name} <Text dimColor>- {cmd.desc}</Text></Text>
           {cmd.params.map((param) => (
             <Box key={param.name} marginLeft={2}>
-              <Text color="gray">ㄴ {param.name}: <Text italic>{param.desc}</Text></Text>
+              <Text color={theme.text.muted}>ㄴ {param.name}: <Text italic>{param.desc}</Text></Text>
             </Box>
           ))}
         </Box>

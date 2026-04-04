@@ -1,0 +1,23 @@
+{
+  "borders": {
+    "default": "gray",
+    "highlight": "cyan",
+    "success": "green",
+    "error": "red",
+    "utility": "magenta"
+  },
+  "text": {
+    "primary": "white",
+    "secondary": "cyan",
+    "muted": "gray",
+    "warning": "yellow",
+    "danger": "red",
+    "success": "green",
+    "invert": "black"
+  },
+  "backgrounds": {
+    "selection": "blue",
+    "cursor": "cyan",
+    "invert": "white"
+  }
+}

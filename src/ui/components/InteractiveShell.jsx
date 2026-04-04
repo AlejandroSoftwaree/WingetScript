@@ -2,9 +2,32 @@ import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
 import CustomTextInput from './CustomTextInput.jsx';
 import { getAllProgramsFlat } from '../../core/jsonLoader.js';
+import theme from '../../core/theme.json';
 
 const verbs = ['install', 'download', 'update', 'delete', 'id', 'utility', 'help', 'exit'];
 const categories = ['all', 'generalPrograms', 'developmentPrograms', 'browserPrograms', 'gamingPrograms', 'socialNetworkPrograms', 'consolePrograms'];
+
+function hslToHex(h, s, l) {
+  l /= 100;
+  const a = s * Math.min(l, 1 - l) / 100;
+  const f = n => {
+    const k = (n + h / 30) % 12;
+    const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+    return Math.round(255 * color).toString(16).padStart(2, '0');
+  };
+  return `#${f(0)}${f(8)}${f(4)}`;
+}
+
+const useRainbowBorder = () => {
+    const [hue, setHue] = useState(0);
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setHue(h => (h + 5) % 360);
+        }, 50);
+        return () => clearInterval(timer);
+    }, []);
+    return hslToHex(hue, 100, 50);
+};
 
 const getSuggestionsFor = (inputStr) => {
   if (!inputStr.startsWith('/') || inputStr.length < 1) {
@@ -87,14 +110,14 @@ const getSuggestionsFor = (inputStr) => {
   return [];
 };
 
-const SuggestionOverlay = ({ suggestions, activeIndex }) => {
+const SuggestionOverlay = ({ suggestions, activeIndex, animatedBorder }) => {
   if (suggestions.length === 0) return null;
 
   return (
-    <Box 
+      <Box 
       flexDirection="column" 
       borderStyle="round" 
-      borderColor="gray" 
+      borderColor={animatedBorder} 
       paddingX={1}
       marginX={1}
       marginBottom={0}
@@ -111,8 +134,8 @@ const SuggestionOverlay = ({ suggestions, activeIndex }) => {
         return (
           <Text 
             key={s.value}
-            color={isSelected ? 'white' : 'white'} 
-            backgroundColor={isSelected ? 'blue' : undefined}
+            color={theme.text.primary} 
+            backgroundColor={isSelected ? theme.backgrounds.selection : undefined}
             wrap="truncate"
           >
             {paddedText}
@@ -131,6 +154,7 @@ const InteractiveShell = ({ onExecute, isExecuting }) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const [suggestions, setSuggestions] = useState([]);
   const [suppressSuggestions, setSuppressSuggestions] = useState(false);
+  const animatedBorder = useRainbowBorder();
 
   useEffect(() => {
     if (suppressSuggestions) {
@@ -242,10 +266,10 @@ const InteractiveShell = ({ onExecute, isExecuting }) => {
   return (
     <Box flexDirection="column">
       {/* Sugerencias arriba del input */}
-      <SuggestionOverlay suggestions={suggestions} activeIndex={activeIndex} />
+      <SuggestionOverlay suggestions={suggestions} activeIndex={activeIndex} animatedBorder={theme.borders.default} />
       
-      <Box borderStyle="round" borderColor="gray" paddingX={1} marginX={1} width={process.stdout.columns - 4}>
-        <Text color="cyan">❯ </Text>
+      <Box borderStyle="round" borderColor={animatedBorder} paddingX={1} marginX={1} width={process.stdout.columns - 4}>
+        <Text color={theme.text.secondary}>❯ </Text>
         <CustomTextInput 
           key={cursorKey}
           value={input} 
@@ -257,7 +281,7 @@ const InteractiveShell = ({ onExecute, isExecuting }) => {
       </Box>
       <Box marginLeft={1}>
         <Text dimColor size="small">
-          <Text color="yellow">↑↓</Text>: Navegar | <Text color="yellow">Tab</Text>: Autocompletar | <Text color="red">ESC</Text>: Limpiar
+          <Text color={theme.text.warning}>↑↓</Text>: Navegar | <Text color={theme.text.warning}>Tab</Text>: Autocompletar | <Text color={theme.text.danger}>ESC</Text>: Limpiar
         </Text>
       </Box>
     </Box>

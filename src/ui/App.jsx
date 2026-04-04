@@ -9,6 +9,7 @@ import UtilityManager from './components/UtilityManager.jsx';
 import { getProgramsByCategory, getProgramData } from '../core/jsonLoader.js';
 import { runWinget, runWingetBatch } from '../core/wingetRun.js';
 import { setWin10ContextMenu, setWin11ContextMenu, exportDirectoryTree } from '../core/systemUtils.js';
+import theme from '../core/theme.json';
 
 const App = () => {
   const { exit } = useApp();
@@ -106,11 +107,11 @@ const App = () => {
     <Box flexDirection="column" width="100%" padding={1}>
       <Static items={outputs}>
         {item => {
-          if (item.type === 'banner') return <Text key={item.id} color="cyan">{figlet.textSync('WINGET CLI', { font: 'Small' })}</Text>;
+          if (item.type === 'banner') return <Text key={item.id} color={theme.text.secondary}>{figlet.textSync('WINGET CLI', { font: 'Small' })}</Text>;
           if (item.type === 'command_log') return (
-            <Box key={item.id} borderStyle="round" borderColor="gray" paddingX={1} marginX={1} width={process.stdout.columns - 4} paddingBottom={0} marginBottom={0}>
-              <Text color="cyan">❯ </Text>
-              <Text>{item.input}</Text>
+            <Box key={item.id} borderStyle="round" borderColor={theme.borders.default} paddingX={1} marginX={1} width={process.stdout.columns - 4} paddingBottom={0} marginBottom={0}>
+              <Text color={theme.text.secondary}>❯ </Text>
+              <Text color={theme.text.primary}>{item.input}</Text>
             </Box>
           );
           if (item.type === 'help') return <Help key={item.id} />;
@@ -123,10 +124,10 @@ const App = () => {
       <Box flexDirection="column" width="100%">
         {idCommand && <IdManager command={idCommand} onFinished={() => setIdCommand(null)} />}
         
-        {!idCommand && !isExecuting && outputs.length === 1 && (
+        {!idCommand && !isExecuting && (
           <Box marginTop={1} flexDirection="column" marginX={1}>
-            <Text color="gray">Modo Shell Interactiva Libre.</Text>
-            <Text color="gray">Escribe <Text color="yellow">/help</Text> para ayuda o <Text color="yellow">/exit</Text> para salir.</Text>
+            <Text color={theme.text.primary}>Modo Shell Interactiva Libre.</Text>
+            <Text color={theme.text.primary}>Escribe <Text color={theme.text.warning}>/help</Text> para ayuda o <Text color={theme.text.warning}>/exit</Text> para salir.</Text>
           </Box>
         )}
 

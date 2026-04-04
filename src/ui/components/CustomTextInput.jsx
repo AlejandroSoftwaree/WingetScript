@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Text, useInput } from 'ink';
+import theme from '../../core/theme.json';
 
 const CustomTextInput = ({ value = '', onChange, onSubmit, disableSubmit, placeholder }) => {
   const [cursorOffset, setCursorOffset] = useState(value.length);
@@ -93,8 +94,8 @@ const CustomTextInput = ({ value = '', onChange, onSubmit, disableSubmit, placeh
   if (!value && placeholder) {
     return (
       <Text>
-        <Text backgroundColor="cyan" color="black">{placeholder[0]}</Text>
-        <Text color="gray">{placeholder.slice(1)}</Text>
+        <Text backgroundColor={theme.backgrounds.cursor} color={theme.text.invert}>{placeholder[0]}</Text>
+        <Text color={theme.text.muted}>{placeholder.slice(1)}</Text>
       </Text>
     );
   }
@@ -102,7 +103,7 @@ const CustomTextInput = ({ value = '', onChange, onSubmit, disableSubmit, placeh
   return (
     <Text>
       <Text>{partBeforeCursor}</Text>
-      <Text backgroundColor="cyan" color="black">{cursorChar}</Text>
+      <Text backgroundColor={theme.backgrounds.cursor} color={theme.text.invert}>{cursorChar}</Text>
       <Text>{partAfterCursor}</Text>
     </Text>
   );
