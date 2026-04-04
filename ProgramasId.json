@@ -1,25 +1,16 @@
 {
-  "generalPrograms": [
-    "Anjok07.UltimateVocalRemover",
-    "Asus.ArmouryCrate",
-    "CharlesMilette.TranslucentTB",
-    "CPUID.CPU-Z",
-    "Crucial.StorageExecutive",
-    "CrystalDewWorld.CrystalDiskInfo",
-    "CrystalDewWorld.CrystalDiskMark",
-    "dev47apps.DroidCam",
-    "KeePassXCTeam.KeePassXC",
-    "Google.GoogleDrive",
-    "JGraph.Draw",
-    "Microsoft.MouseWithoutBorders",
-    "Microsoft.Office",
-    "Microsoft.PCManager",
-    "ModernFlyouts.ModernFlyouts",
-    "RARLab.WinRAR",
-    "REALiX.HWiNFO",
-    "Spotify.Spotify",
-    "Toinane.Colorpicker",
-    "WinDirStat.WinDirStat"
+  "browserPrograms": [
+    "Brave.Brave",
+    "DuckDuckGo.DesktopBrowser",
+    "Google.Chrome",
+    "Mozilla.Firefox"
+  ],
+  "consolePrograms": [
+    "JanDeDobbeleer.OhMyPosh",
+    "Microsoft.PowerShell",
+    "pyenv",
+    "Terminal-Icons",
+    "Warp.Warp"
   ],
   "developmentPrograms": [
     "ApacheFriends.Xampp.8.2",
@@ -40,12 +31,6 @@
     "Ventoy.Ventoy",
     "WiresharkFoundation.Wireshark"
   ],
-  "browserPrograms": [
-    "Brave.Brave",
-    "DuckDuckGo.DesktopBrowser",
-    "Google.Chrome",
-    "Mozilla.Firefox"
-  ],
   "gamingPrograms": [
     "Blizzard.BattleNet",
     "ElectronicArts.EADesktop",
@@ -54,16 +39,31 @@
     "Valve.Steam",
     "Valve.SteamCMD"
   ],
+  "generalPrograms": [
+    "Anjok07.UltimateVocalRemover",
+    "Asus.ArmouryCrate",
+    "CharlesMilette.TranslucentTB",
+    "CPUID.CPU-Z",
+    "Crucial.StorageExecutive",
+    "CrystalDewWorld.CrystalDiskInfo",
+    "CrystalDewWorld.CrystalDiskMark",
+    "dev47apps.DroidCam",
+    "Google.GoogleDrive",
+    "JGraph.Draw",
+    "KeePassXCTeam.KeePassXC",
+    "Microsoft.MouseWithoutBorders",
+    "Microsoft.Office",
+    "Microsoft.PCManager",
+    "ModernFlyouts.ModernFlyouts",
+    "RARLab.WinRAR",
+    "REALiX.HWiNFO",
+    "Spotify.Spotify",
+    "Toinane.Colorpicker",
+    "WinDirStat.WinDirStat"
+  ],
   "socialNetworkPrograms": [
     "9NKSQGP7F2NH",
     "Discord.Discord",
     "Telegram.TelegramDesktop"
-  ],
-  "consolePrograms": [
-    "JanDeDobbeleer.OhMyPosh",
-    "Microsoft.PowerShell",
-    "Terminal-Icons",
-    "pyenv",
-    "Warp.Warp"
   ]
 }

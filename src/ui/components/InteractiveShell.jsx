@@ -1,7 +1,91 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
-import TextInput from 'ink-text-input';
+import CustomTextInput from './CustomTextInput.jsx';
 import { getAllProgramsFlat } from '../../core/jsonLoader.js';
+
+const verbs = ['install', 'download', 'update', 'delete', 'id', 'utility', 'help', 'exit'];
+const categories = ['all', 'generalPrograms', 'developmentPrograms', 'browserPrograms', 'gamingPrograms', 'socialNetworkPrograms', 'consolePrograms'];
+
+const getSuggestionsFor = (inputStr) => {
+  if (!inputStr.startsWith('/') || inputStr.length < 1) {
+    return [];
+  }
+  const parts = inputStr.split(' ');
+  const currentPart = parts[parts.length - 1];
+  let newSuggestions = [];
+
+  if (parts.length === 1) {
+    const query = currentPart.slice(1).toLowerCase();
+    if (verbs.includes(query)) {
+      parts.push('');
+    } else {
+      return verbs
+        .filter(v => v.startsWith(query))
+        .map(v => ({ label: `/${v}`, value: v, type: 'verb' }));
+    }
+  }
+
+  if (parts.length === 2) {
+    const verb = parts[0].slice(1);
+    const queryStr = parts[1] || '';
+    const query = queryStr.startsWith('--') ? queryStr.slice(2).toLowerCase() : queryStr.toLowerCase();
+    const verbsWithParams = ['install', 'download', 'update', 'delete'];
+    
+    if (verbsWithParams.includes(verb)) {
+      let options = [...categories];
+      if (verb === 'install') options.push('custom');
+      
+      if (options.includes(query)) {
+        parts.push('');
+      } else {
+        return options
+          .filter(o => o.toLowerCase().startsWith(query))
+          .map(o => ({ label: `--${o}`, value: o, type: 'param' }));
+      }
+    } else if (verb === 'id') {
+      const idOptions = ['list', 'add', 'delete', 'update'];
+      
+      if (idOptions.includes(query)) {
+        parts.push('');
+      } else {
+        return idOptions
+          .filter(o => o.startsWith(query))
+          .map(o => ({ label: o, value: o, type: 'id_subcmd' }));
+      }
+    } else if (verb === 'utility') {
+      const utilOptions = ['addWin10', 'addWin11', 'exportDirectory', 'testColor'];
+
+      if (utilOptions.includes(query)) {
+        parts.push('');
+      } else {
+        return utilOptions
+          .filter(o => o.toLowerCase().startsWith(query))
+          .map(o => ({ label: o, value: o, type: 'id_subcmd' }));
+      }
+    } else {
+      return [];
+    }
+  }
+
+  if (parts.length === 3) {
+    const currentParam = parts[1].toLowerCase();
+    if (currentParam === '--custom') {
+      const query = (parts[2] || '').toLowerCase();
+      const allIds = getAllProgramsFlat();
+      return allIds
+        .filter(p => p.id.toLowerCase().includes(query))
+        .slice(0, 6)
+        .map(p => ({ label: p.id, value: p.id, type: 'id' }));
+    } else if (parts[0].toLowerCase() === '/id' && currentParam === 'add') {
+      const query = (parts[2] || '').toLowerCase();
+      if ('category'.startsWith(query) && query !== '') {
+        return [{ label: 'category', value: 'category', type: 'id_subcmd_cat' }];
+      }
+    }
+  }
+  
+  return [];
+};
 
 const SuggestionOverlay = ({ suggestions, activeIndex }) => {
   if (suggestions.length === 0) return null;
@@ -9,18 +93,32 @@ const SuggestionOverlay = ({ suggestions, activeIndex }) => {
   return (
     <Box 
       flexDirection="column" 
-      borderStyle="single" 
+      borderStyle="round" 
       borderColor="gray" 
       paddingX={1}
+      marginX={1}
       marginBottom={0}
-      width={60}
+      width={process.stdout.columns - 4}
     >
-      {suggestions.map((s, i) => (
-        <Text key={s.value} color={i === activeIndex ? 'cyan' : 'white'} wrap="truncate">
-          {i === activeIndex ? '❯ ' : '  '}
-          {s.label}
-        </Text>
-      ))}
+      {suggestions.map((s, i) => {
+        const isSelected = i === activeIndex;
+        const prefix = isSelected ? '❯ ' : '  ';
+        const rawText = `${prefix}${s.label}`;
+        // Llenando de espacios hasta el final del box para simular un background de fila completo
+        const targetWidth = (process.stdout.columns || 80) - 8;
+        const paddedText = rawText.padEnd(targetWidth, ' ');
+
+        return (
+          <Text 
+            key={s.value}
+            color={isSelected ? 'white' : 'white'} 
+            backgroundColor={isSelected ? 'blue' : undefined}
+            wrap="truncate"
+          >
+            {paddedText}
+          </Text>
+        );
+      })}
     </Box>
   );
 };
@@ -29,54 +127,22 @@ const InteractiveShell = ({ onExecute, isExecuting }) => {
   const [input, setInput] = useState('');
   const [history, setHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
+  const [cursorKey, setCursorKey] = useState(0);
   const [activeIndex, setActiveIndex] = useState(0);
   const [suggestions, setSuggestions] = useState([]);
-
-  const verbs = ['install', 'download', 'update', 'delete', 'id', 'utility', 'help', 'exit'];
-  const categories = ['all', 'generalPrograms', 'developmentPrograms', 'browserPrograms', 'gamingPrograms', 'socialNetworkPrograms', 'consolePrograms'];
+  const [suppressSuggestions, setSuppressSuggestions] = useState(false);
 
   useEffect(() => {
-    // Solo sugerir si el input empieza con / y tiene más de 0 caracteres después del /
-    // O si estamos en niveles más profundos (parámetros o IDs)
-    if (!input.startsWith('/') || input.length < 1) {
-      setSuggestions([]);
+    if (suppressSuggestions) {
+      setSuppressSuggestions(false);
+      setSuggestions([]); // Forzamos apagado temporal de predicciones al cargar historial
       return;
     }
-
-    const parts = input.split(' ');
-    const currentPart = parts[parts.length - 1];
-    let newSuggestions = [];
-
-    if (parts.length === 1) {
-      const query = currentPart.slice(1).toLowerCase();
-      // Si el query está vacío (solo escribió /), mostramos todos los verbos
-      newSuggestions = verbs
-        .filter(v => v.startsWith(query))
-        .map(v => ({ label: `/${v}`, value: v, type: 'verb' }));
-    } else if (parts.length === 2) {
-      const verb = parts[0].slice(1);
-      const query = currentPart.startsWith('--') ? currentPart.slice(2).toLowerCase() : currentPart.toLowerCase();
-      
-      let options = [...categories];
-      if (verb === 'install') options.push('custom');
-
-      newSuggestions = options
-        .filter(o => o.toLowerCase().startsWith(query))
-        .map(o => ({ label: `--${o}`, value: o, type: 'param' }));
-    } else if (parts.length === 3 && parts[1] === '--custom') {
-      const query = currentPart.toLowerCase();
-      const allIds = getAllProgramsFlat();
-      newSuggestions = allIds
-        .filter(p => p.id.toLowerCase().includes(query))
-        .slice(0, 6) // Reducimos lista para evitar bugs de scroll
-        .map(p => ({ label: p.id, value: p.id, type: 'id' }));
-    }
-
-    setSuggestions(newSuggestions);
+    setSuggestions(getSuggestionsFor(input));
     setActiveIndex(0);
   }, [input]);
 
-  useInput((data, key) => {
+  useInput((char, key) => {
     if (isExecuting) return;
 
     // Navegación de sugerencias
@@ -93,29 +159,48 @@ const InteractiveShell = ({ onExecute, isExecuting }) => {
         const selected = suggestions[activeIndex];
         const parts = input.split(' ');
         
+        let newInput = '';
         if (selected.type === 'verb') {
-          setInput(`/${selected.value} `);
+          newInput = `/${selected.value} `;
         } else if (selected.type === 'param') {
           if (selected.value === 'custom') {
-            setInput(`${parts[0]} --custom `);
+            newInput = `${parts[0]} --custom `;
           } else {
-            setInput(`${parts[0]} --${selected.value}`);
+            newInput = `${parts[0]} --${selected.value} `;
           }
         } else if (selected.type === 'id') {
-          setInput(`${parts[0]} ${parts[1]} ${selected.value}`);
+          newInput = `${parts[0]} ${parts[1]} ${selected.value} `;
+        } else if (selected.type === 'id_subcmd') {
+          newInput = `${parts[0]} ${selected.value} `;
+        } else if (selected.type === 'id_subcmd_cat') {
+          newInput = `${parts[0]} ${parts[1]} ${selected.value} `;
         }
+        setInput(newInput);
         setSuggestions([]);
+        setCursorKey(prev => prev + 1);
+        
+        if (key.return) {
+          const futureSuggestions = getSuggestionsFor(newInput);
+          if (futureSuggestions.length === 0) {
+            setHistory(prev => [...prev, newInput.trim()]);
+            setHistoryIndex(-1);
+            onExecute(newInput.trim());
+            setInput('');
+          }
+        }
         return;
       }
     }
 
-    // Historial (solo si no hay sugerencias)
-    if (suggestions.length === 0) {
+    // Historial (solo si no hay sugerencias explícitas abiertas en ese momento)
+    if (suggestions.length === 0 || suppressSuggestions) {
       if (key.upArrow && history.length > 0) {
         const nextIndex = historyIndex + 1;
         if (nextIndex < history.length) {
           setHistoryIndex(nextIndex);
+          setSuppressSuggestions(true);
           setInput(history[history.length - 1 - nextIndex]);
+          setCursorKey(prev => prev + 1);
         }
         return;
       }
@@ -123,10 +208,14 @@ const InteractiveShell = ({ onExecute, isExecuting }) => {
         if (historyIndex > 0) {
           const nextIndex = historyIndex - 1;
           setHistoryIndex(nextIndex);
+          setSuppressSuggestions(true);
           setInput(history[history.length - 1 - nextIndex]);
+          setCursorKey(prev => prev + 1);
         } else {
           setHistoryIndex(-1);
+          setSuppressSuggestions(true);
           setInput('');
+          setCursorKey(prev => prev + 1);
         }
         return;
       }
@@ -155,12 +244,14 @@ const InteractiveShell = ({ onExecute, isExecuting }) => {
       {/* Sugerencias arriba del input */}
       <SuggestionOverlay suggestions={suggestions} activeIndex={activeIndex} />
       
-      <Box borderStyle="round" borderColor="gray" paddingX={1} width={70}>
+      <Box borderStyle="round" borderColor="gray" paddingX={1} marginX={1} width={process.stdout.columns - 4}>
         <Text color="cyan">❯ </Text>
-        <TextInput 
+        <CustomTextInput 
+          key={cursorKey}
           value={input} 
           onChange={setInput} 
           onSubmit={handleSubmit}
+          disableSubmit={suggestions.length > 0}
           placeholder='Escribe "/" para comandos'
         />
       </Box>

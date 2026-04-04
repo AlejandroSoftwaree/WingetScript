@@ -30,8 +30,8 @@ const Help = () => {
   ];
 
   return (
-    <Box flexDirection="column" paddingY={1}>
-      <Text color="cyan" bold underline>📜 LISTADO DE COMANDOS DISPONIBLES</Text>
+    <Box flexDirection="column" paddingY={1} borderStyle="round" borderColor="gray" marginX={1} width={process.stdout.columns - 4} paddingX={1} marginBottom={1}>
+      <Text color="cyan" bold underline>LISTADO DE COMANDOS DISPONIBLES</Text>
       {commands.map((cmd) => (
         <Box key={cmd.name} flexDirection="column" marginTop={1}>
           <Text bold color="yellow">/{cmd.name} <Text dimColor>- {cmd.desc}</Text></Text>
@@ -42,8 +42,6 @@ const Help = () => {
           ))}
         </Box>
       ))}
-      <Text dimColor marginTop={1}>------------------------------------------------</Text>
-      <Text color="gray">Presiona cualquier tecla para volver...</Text>
     </Box>
   );
 };

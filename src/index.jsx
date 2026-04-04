@@ -13,6 +13,7 @@ program
 
 // Si no hay argumentos, lanzamos la interfaz de Ink
 program.action(() => {
+  console.clear();
   render(<App />);
 });
 
