@@ -1,8 +1,5 @@
 {
   "browserPrograms": [
-    "Brave.Brave",
-    "DuckDuckGo.DesktopBrowser",
-    "Google.Chrome",
     "Mozilla.Firefox"
   ],
   "consolePrograms": [

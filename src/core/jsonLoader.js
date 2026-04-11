@@ -62,10 +62,12 @@ export const saveProgramData = (data) => {
   try {
     const sortedData = {};
     const sortedKeys = Object.keys(data).sort();
-    
+
     for (const key of sortedKeys) {
       if (Array.isArray(data[key])) {
-        sortedData[key] = [...data[key]].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+        sortedData[key] = [...data[key]]
+          .filter(item => item && typeof item === 'string' && item.trim() !== '')
+          .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
       }
     }
 
@@ -79,9 +81,9 @@ export const saveProgramData = (data) => {
 export const addCategory = (categoryName) => {
   const data = getProgramData();
   if (!data) return false;
-  
+
   if (data[categoryName]) return false;
-  
+
   data[categoryName] = [];
   saveProgramData(data);
   return true;
@@ -92,7 +94,7 @@ export const addProgramId = (categoryName, id) => {
   if (!data || !data[categoryName]) return false;
 
   if (data[categoryName].includes(id)) return false;
-  
+
   data[categoryName].push(id);
   saveProgramData(data);
   return true;
@@ -104,7 +106,7 @@ export const removeProgramId = (categoryName, id) => {
 
   const index = data[categoryName].indexOf(id);
   if (index === -1) return false;
-  
+
   data[categoryName].splice(index, 1);
   saveProgramData(data);
   return true;
@@ -116,16 +118,15 @@ export const updateProgramId = (categoryName, oldId, newId) => {
 
   const index = data[categoryName].indexOf(oldId);
   if (index === -1) return false;
-  
+
   if (data[categoryName].includes(newId)) return false;
-  
+
   data[categoryName][index] = newId;
   saveProgramData(data);
   return true;
 };
 
 export const formatJsonValues = () => {
-    const data = getProgramData();
-    if(data) saveProgramData(data);
+  const data = getProgramData();
+  if (data) saveProgramData(data);
 };
-

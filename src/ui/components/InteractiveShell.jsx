@@ -1,11 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
 import CustomTextInput from './CustomTextInput.jsx';
-import { getAllProgramsFlat } from '../../core/jsonLoader.js';
+import { getAllProgramsFlat, getProgramsByCategory, getProgramData } from '../../core/jsonLoader.js';
 import theme from '../../core/theme.json';
 
 const verbs = ['install', 'download', 'update', 'delete', 'id', 'utility', 'help', 'exit'];
-const categories = ['all', 'generalPrograms', 'developmentPrograms', 'browserPrograms', 'gamingPrograms', 'socialNetworkPrograms', 'consolePrograms'];
+const fallbackCategories = ['all', 'generalPrograms', 'developmentPrograms', 'browserPrograms', 'gamingPrograms', 'socialNetworkPrograms', 'consolePrograms'];
+
+const getDynamicCategories = (excludeAll = false) => {
+  const data = getProgramData();
+  let cats = data ? Object.keys(data) : fallbackCategories.filter(c => c !== 'all');
+  if (!excludeAll && !cats.includes('all')) {
+    cats = ['all', ...cats];
+  }
+  return cats;
+};
 
 function hslToHex(h, s, l) {
   l /= 100;
@@ -18,24 +27,31 @@ function hslToHex(h, s, l) {
   return `#${f(0)}${f(8)}${f(4)}`;
 }
 
+
+
 const useRainbowBorder = () => {
-    const [hue, setHue] = useState(0);
-    useEffect(() => {
-        const timer = setInterval(() => {
-            setHue(h => (h + 5) % 360);
-        }, 50);
-        return () => clearInterval(timer);
-    }, []);
-    return hslToHex(hue, 100, 50);
+  const [hue, setHue] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setHue(h => (h + 5) % 360);
+    }, 50);
+    return () => clearInterval(timer);
+  }, []);
+  return hslToHex(hue, 100, 50);
 };
 
 const getSuggestionsFor = (inputStr) => {
   if (!inputStr.startsWith('/') || inputStr.length < 1) {
     return [];
   }
-  const parts = inputStr.split(' ');
+
+  // Extrae comandos ignorando espacios extra, pero conserva el final si estás a mitad de escribir
+  const rawParts = inputStr.match(/\S+/g) || [];
+  if (inputStr.match(/\s+$/)) {
+    rawParts.push('');
+  }
+  const parts = rawParts;
   const currentPart = parts[parts.length - 1];
-  let newSuggestions = [];
 
   if (parts.length === 1) {
     const query = currentPart.slice(1).toLowerCase();
@@ -53,11 +69,11 @@ const getSuggestionsFor = (inputStr) => {
     const queryStr = parts[1] || '';
     const query = queryStr.startsWith('--') ? queryStr.slice(2).toLowerCase() : queryStr.toLowerCase();
     const verbsWithParams = ['install', 'download', 'update', 'delete'];
-    
+
     if (verbsWithParams.includes(verb)) {
-      let options = [...categories];
+      let options = getDynamicCategories(false);
       if (verb === 'install') options.push('custom');
-      
+
       if (options.includes(query)) {
         parts.push('');
       } else {
@@ -67,7 +83,7 @@ const getSuggestionsFor = (inputStr) => {
       }
     } else if (verb === 'id') {
       const idOptions = ['list', 'add', 'delete', 'update'];
-      
+
       if (idOptions.includes(query)) {
         parts.push('');
       } else {
@@ -99,14 +115,12 @@ const getSuggestionsFor = (inputStr) => {
         .filter(p => p.id.toLowerCase().includes(query))
         .slice(0, 6)
         .map(p => ({ label: p.id, value: p.id, type: 'id' }));
-    } else if (parts[0].toLowerCase() === '/id' && currentParam === 'add') {
-      const query = (parts[2] || '').toLowerCase();
-      if ('category'.startsWith(query) && query !== '') {
-        return [{ label: 'category', value: 'category', type: 'id_subcmd_cat' }];
-      }
     }
+
+
+    return [];
   }
-  
+
   return [];
 };
 
@@ -114,10 +128,10 @@ const SuggestionOverlay = ({ suggestions, activeIndex, animatedBorder }) => {
   if (suggestions.length === 0) return null;
 
   return (
-      <Box 
-      flexDirection="column" 
-      borderStyle="round" 
-      borderColor={animatedBorder} 
+    <Box
+      flexDirection="column"
+      borderStyle="round"
+      borderColor={animatedBorder}
       paddingX={1}
       marginX={1}
       marginBottom={0}
@@ -132,9 +146,9 @@ const SuggestionOverlay = ({ suggestions, activeIndex, animatedBorder }) => {
         const paddedText = rawText.padEnd(targetWidth, ' ');
 
         return (
-          <Text 
+          <Text
             key={s.value}
-            color={theme.text.primary} 
+            color={theme.text.primary}
             backgroundColor={isSelected ? theme.backgrounds.selection : undefined}
             wrap="truncate"
           >
@@ -181,8 +195,8 @@ const InteractiveShell = ({ onExecute, isExecuting }) => {
       }
       if (key.tab || (key.return && suggestions.length > 0)) {
         const selected = suggestions[activeIndex];
-        const parts = input.split(' ');
-        
+        const parts = input.match(/\S+/g) || [];
+
         let newInput = '';
         if (selected.type === 'verb') {
           newInput = `/${selected.value} `;
@@ -196,13 +210,15 @@ const InteractiveShell = ({ onExecute, isExecuting }) => {
           newInput = `${parts[0]} ${parts[1]} ${selected.value} `;
         } else if (selected.type === 'id_subcmd') {
           newInput = `${parts[0]} ${selected.value} `;
-        } else if (selected.type === 'id_subcmd_cat') {
+        } else if (selected.type === 'id_category') {
           newInput = `${parts[0]} ${parts[1]} ${selected.value} `;
+        } else if (selected.type === 'id_value') {
+          newInput = `${parts[0]} ${parts[1]} ${parts[2]} ${selected.value} `;
         }
         setInput(newInput);
         setSuggestions([]);
         setCursorKey(prev => prev + 1);
-        
+
         if (key.return) {
           const futureSuggestions = getSuggestionsFor(newInput);
           if (futureSuggestions.length === 0) {
@@ -246,9 +262,9 @@ const InteractiveShell = ({ onExecute, isExecuting }) => {
     }
 
     if (key.escape) {
-        setInput('');
-        setSuggestions([]);
-        setHistoryIndex(-1);
+      setInput('');
+      setSuggestions([]);
+      setHistoryIndex(-1);
     }
   });
 
@@ -256,10 +272,10 @@ const InteractiveShell = ({ onExecute, isExecuting }) => {
     if (value.trim() === '') return;
     // Si hay sugerencias, el Enter arriba las maneja. Si no, ejecutamos.
     if (suggestions.length === 0) {
-        setHistory(prev => [...prev, value]);
-        setHistoryIndex(-1);
-        onExecute(value);
-        setInput('');
+      setHistory(prev => [...prev, value]);
+      setHistoryIndex(-1);
+      onExecute(value);
+      setInput('');
     }
   };
 
@@ -267,16 +283,16 @@ const InteractiveShell = ({ onExecute, isExecuting }) => {
     <Box flexDirection="column">
       {/* Sugerencias arriba del input */}
       <SuggestionOverlay suggestions={suggestions} activeIndex={activeIndex} animatedBorder={theme.borders.default} />
-      
+
       <Box borderStyle="round" borderColor={animatedBorder} paddingX={1} marginX={1} width={process.stdout.columns - 4}>
         <Text color={theme.text.secondary}>❯ </Text>
-        <CustomTextInput 
+        <CustomTextInput
           key={cursorKey}
-          value={input} 
-          onChange={setInput} 
+          value={input}
+          onChange={setInput}
           onSubmit={handleSubmit}
           disableSubmit={suggestions.length > 0}
-          placeholder='Escribe "/" para comandos'
+          placeholder='Escribe "/" para comandos222'
         />
       </Box>
       <Box marginLeft={1}>
