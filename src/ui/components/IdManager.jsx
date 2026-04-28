@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
 import SelectInput from 'ink-select-input';
 import TextInput from 'ink-text-input';
-import { getProgramData, addProgramId, addCategory, removeProgramId, updateProgramId, formatJsonValues } from '../../core/jsonLoader.js';
+import { getProgramData, getAllProgramsFlat, addProgramId, addCategory, removeProgramId, updateProgramId, formatJsonValues } from '../../core/jsonLoader.js';
 import theme from '../../core/theme.json';
 
 const IdManager = ({ command, onFinished }) => {
@@ -19,7 +19,7 @@ const IdManager = ({ command, onFinished }) => {
 
   useInput((input, key) => {
     if (key.escape) {
-      onFinished();
+      if (onFinished) onFinished();
     }
   });
 
@@ -32,7 +32,9 @@ const IdManager = ({ command, onFinished }) => {
       setStatusMsg('El JSON ha sido formateado y ordenado exitosamente.');
       setStep('done');
       setTimeout(onFinished, 2000);
+
     } else if (action === 'add') {
+      // /add category <nombre>
       if (value1 === 'category' && value2) {
         const result = addCategory(value2);
         if (result) {
@@ -44,29 +46,22 @@ const IdManager = ({ command, onFinished }) => {
         }
         setStep('done');
         setTimeout(onFinished, 2500);
-      } else if (value1 && value2 && pData[value1]) {
-        // Soporte directo autocompletado: /id add <categoria> <id>
-        const result = addProgramId(value1, value2);
-        if (result) {
-          setStatusMsg(`ID '${value2}' agregado correctamente a la categoría '${value1}'.`);
-          setIsSuccess(true);
-        } else {
-          setStatusMsg(`Fallo: El ID '${value2}' ya existe en la categoría '${value1}'.`);
-          setIsSuccess(false);
-        }
-        setStep('done');
-        setTimeout(onFinished, 2500);
+      } else {
+        // /add id → flujo interactivo: primero seleccionar categoría
+        setStep('select_cat_for_add');
+        return;
       }
+
     } else if (action === 'delete') {
       if (!value1 || value1 === 'null' || value1 === 'undefined' || value1.trim() === '') {
-        setStep('select_cat'); // Entra al modo interactivo si no hay argumentos
+        setStep('select_id_all');
         return;
       }
 
       let foundCategory = null;
       let targetId = value1;
 
-      // Soporte para comando directo: /id delete <categoria> <id>
+      // Soporte para /id delete <categoria> <id>
       if (pData[value1] && value2 && value2 !== 'null' && value2 !== 'undefined') {
         foundCategory = value1;
         targetId = value2;
@@ -89,13 +84,14 @@ const IdManager = ({ command, onFinished }) => {
       }
       setStep('done');
       setTimeout(onFinished, 2500);
+
     } else if (action === 'update') {
       if (!value1 || value1 === 'null' || value1 === 'undefined' || value1.trim() === '') {
-        setStep('select_cat'); // Entra al modo interactivo
+        setStep('select_id_all');
         return;
       }
 
-      // Soporte para comando interactivo pre-rellenado: /id update <categoria> <id_viejo>
+      // /id update <categoria> <id_viejo> → salta a TextInput
       if (pData[value1] && value2 && value2 !== 'null' && value2 !== 'undefined') {
         setSelectedCat(value1);
         setSelectedId(value2);
@@ -134,7 +130,7 @@ const IdManager = ({ command, onFinished }) => {
 
   if (!data) return <Text color={theme.text.warning}>Cargando datos...</Text>;
 
-  // Lógica para /id list
+  // /id list
   if (action === 'list') {
     return (
       <Box flexDirection="column" marginTop={1} paddingY={1} borderStyle="round" borderColor={theme.borders.default} marginX={1} width={process.stdout.columns - 4} paddingX={1} marginBottom={1}>
@@ -157,109 +153,91 @@ const IdManager = ({ command, onFinished }) => {
     );
   }
 
-  // Lógica para /id add <id>
-  if (action === 'add' && value1 !== 'category' && step !== 'done') {
-    const categoryOptions = Object.keys(data).map(cat => ({
-      label: cat,
-      value: cat
-    }));
-
-    const handleSelectCategory = (item) => {
-      const result = addProgramId(item.value, value1);
-      if (result) {
-        setStatusMsg(`ID '${value1}' agregado correctamente a la categoría '${item.value}'.`);
-        setIsSuccess(true);
-      } else {
-        setStatusMsg(`Fallo: El ID '${value1}' ya existe en la categoría '${item.value}'.`);
-        setIsSuccess(false);
-      }
-      setStep('done');
-      setTimeout(onFinished, 2500);
-    };
-
-    return (
-      <Box flexDirection="column" marginTop={1}>
-        <Text color={theme.text.secondary}>¿A qué categoría deseas agregar el ID '{value1}'?</Text>
-        {statusMsg ? (
-          <Text color={isSuccess ? theme.text.success : theme.text.danger}>{statusMsg}</Text>
-        ) : (
-          <Box marginLeft={2} marginTop={1}>
-            <SelectInput items={categoryOptions} onSelect={handleSelectCategory} />
-          </Box>
-        )}
-      </Box>
-    );
-  }
-
-  // Lógica interactiva para /id delete y /id update (Paso 1: Categoría)
-  if (step === 'select_cat') {
+  // /add id → Paso 1: Seleccionar categoría
+  if (step === 'select_cat_for_add') {
     const categoryOptions = Object.keys(data).map(cat => ({ label: cat, value: cat }));
     return (
-      <Box flexDirection="column" marginTop={1}>
-        <Text color={theme.text.secondary}>
-          {action === 'delete' ? '¿De qué categoría deseas eliminar un ID?' : '¿En qué categoría está el ID que deseas actualizar?'}
-        </Text>
+      <Box flexDirection="column" borderStyle="round" borderColor={theme.borders.utility} paddingX={1} marginX={1} width={process.stdout.columns - 4} marginBottom={1}>
+        <Text color={theme.text.secondary} bold>ADD ID → Selecciona la categoría de destino:</Text>
         <Box marginLeft={2} marginTop={1}>
           <SelectInput
             items={categoryOptions}
             onSelect={(item) => {
               setSelectedCat(item.value);
-              setStep('select_id');
+              setStep('input_new_id');
             }}
           />
         </Box>
+        <Text dimColor>ESC para cancelar</Text>
       </Box>
     );
   }
 
-  // Lógica interactiva (Paso 2: Seleccionar ID)
-  if (step === 'select_id') {
-    const ids = data[selectedCat] || [];
-    if (ids.length === 0) {
-      setTimeout(onFinished, 2500);
-      return (
-        <Box marginTop={1}><Text color={theme.text.danger}>No hay programas en la categoría '{selectedCat}'.</Text></Box>
-      );
-    }
-    const idOptions = ids.map(id => ({ label: id, value: id }));
+  // /id delete y /id update → Lista plana de todos los IDs
+  if (step === 'select_id_all') {
+    const allPrograms = getAllProgramsFlat();
+    const allIdOptions = allPrograms.map(p => ({
+      label: `${p.id}  [${p.category}]`,
+      value: p.id
+    }));
+    const label = action === 'delete' ? 'DELETE → Selecciona el ID a eliminar:' : 'UPDATE → Selecciona el ID a actualizar:';
+    const borderColor = action === 'delete' ? theme.borders.error : theme.borders.highlight;
+
     return (
-      <Box flexDirection="column" marginTop={1}>
-        <Text color={theme.text.secondary}>
-          {action === 'delete' ? 'Selecciona el ID que deseas eliminar:' : 'Selecciona el ID que deseas actualizar:'}
-        </Text>
+      <Box flexDirection="column" borderStyle="round" borderColor={borderColor} paddingX={1} marginX={1} width={process.stdout.columns - 4} marginBottom={1}>
+        <Text color={theme.text.secondary} bold>{label}</Text>
         <Box marginLeft={2} marginTop={1}>
           <SelectInput
-            items={idOptions}
+            items={allIdOptions}
             onSelect={(item) => {
+              const prog = allPrograms.find(p => p.id === item.value);
               if (action === 'delete') {
-                removeProgramId(selectedCat, item.value);
-                setStatusMsg(`ID '${item.value}' eliminado de la categoría '${selectedCat}'.`);
+                removeProgramId(prog.category, item.value);
+                setStatusMsg(`ID '${item.value}' eliminado de '${prog.category}'.`);
                 setIsSuccess(true);
                 setStep('done');
                 setTimeout(onFinished, 2500);
               } else {
+                setSelectedCat(prog.category);
                 setSelectedId(item.value);
                 setStep('input_new_id');
               }
             }}
           />
         </Box>
+        <Text dimColor>ESC para cancelar</Text>
       </Box>
     );
   }
 
-  // Lógica interactiva (Paso 3 EXCLUSIVO para UPDATE: Escribir nuevo valor)
+  // Paso final de ADD e UPDATE: Escribir el valor
   if (step === 'input_new_id') {
+    const isAdd = action === 'add';
+    const promptText = isAdd
+      ? `ADD → Categoría: '${selectedCat}' — Ingresa el nuevo Winget ID:`
+      : `UPDATE → Reemplazando '${selectedId}' — Ingresa el nuevo ID:`;
+    const borderColor = isAdd ? theme.borders.utility : theme.borders.highlight;
+
     return (
-      <Box flexDirection="column" marginTop={1}>
-        <Text color={theme.text.secondary}>Introduce el nuevo valor para '{selectedId}':</Text>
-        <Box borderStyle="round" borderColor={theme.borders.default} paddingX={1} width={60} marginTop={1}>
-          <Text color="cyan">❯ </Text>
+      <Box flexDirection="column" borderStyle="round" borderColor={borderColor} paddingX={1} marginX={1} width={process.stdout.columns - 4} marginBottom={1}>
+        <Text color={theme.text.secondary} bold>{promptText}</Text>
+        <Box paddingX={1} marginTop={1}>
+          <Text color={theme.text.secondary}>❯ </Text>
           <TextInput
             value={newIdInput}
             onChange={setNewIdInput}
             onSubmit={(val) => {
-              if (val.trim() !== '') {
+              if (val.trim() === '') return;
+              if (isAdd) {
+                const result = addProgramId(selectedCat, val.trim());
+                if (result) {
+                  setStatusMsg(`ID '${val.trim()}' agregado a '${selectedCat}'.`);
+                  setIsSuccess(true);
+                } else {
+                  setStatusMsg(`Fallo: '${val.trim()}' ya existe en '${selectedCat}'.`);
+                  setIsSuccess(false);
+                }
+              } else {
                 const result = updateProgramId(selectedCat, selectedId, val.trim());
                 if (result) {
                   setStatusMsg(`ID '${selectedId}' actualizado a '${val.trim()}'.`);
@@ -268,22 +246,20 @@ const IdManager = ({ command, onFinished }) => {
                   setStatusMsg(`Fallo al actualizar. Tal vez '${val.trim()}' ya exista.`);
                   setIsSuccess(false);
                 }
-                setStep('done');
-                setTimeout(onFinished, 2500);
               }
+              setStep('done');
+              setTimeout(onFinished, 2500);
             }}
           />
         </Box>
-        <Box marginLeft={1}>
-          <Text dimColor size="small">Presiona <Text color={theme.text.success}>Enter</Text> para confirmar.</Text>
-        </Box>
+        <Text dimColor>Presiona <Text color={theme.text.success}>Enter</Text> para confirmar · ESC para cancelar</Text>
       </Box>
     );
   }
 
-  // Fallback genérico para acciones silenciosas (ej: format, action sin select)
+  // Fallback: mensaje de estado (done, errores silenciosos)
   return (
-    <Box flexDirection="column" marginTop={2}>
+    <Box flexDirection="column" marginTop={2} marginX={1}>
       {statusMsg && <Text color={isSuccess ? theme.text.success : theme.text.danger}>{statusMsg}</Text>}
     </Box>
   );

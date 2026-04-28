@@ -1,5 +1,8 @@
 {
   "browserPrograms": [
+    "Brave.Brave",
+    "DuckDuckGo.DesktopBrowser",
+    "Google.Chrome",
     "Mozilla.Firefox"
   ],
   "consolePrograms": [
@@ -62,5 +65,9 @@
     "9NKSQGP7F2NH",
     "Discord.Discord",
     "Telegram.TelegramDesktop"
-  ]
+  ],
+  "testing": [
+    "testing"
+  ],
+  "testing2": []
 }

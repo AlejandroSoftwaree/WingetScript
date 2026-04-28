@@ -4,6 +4,7 @@ import SelectInput from 'ink-select-input';
 
 const MainMenu = ({ onSelect }) => {
   const items = [
+    { label: '=> Modo Shell Interactiva', value: 'shell' },
     { label: '/install  - Instalar programas', value: 'install' },
     { label: '/download - Descargar instaladores', value: 'download' },
     { label: '/update   - Actualizar programas', value: 'update' },

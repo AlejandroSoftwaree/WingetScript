@@ -1,19 +1,17 @@
 import React from 'react';
 import { Box, Text } from 'ink';
 import SelectInput from 'ink-select-input';
+import { getProgramData } from '../../core/jsonLoader.js';
 
 const CategoryMenu = ({ verb, onSelect }) => {
+  const data = getProgramData();
+  const dynamicCats = data ? Object.keys(data) : [];
+
   const items = [
     { label: 'All - Ejecutar sobre todos', value: 'all' },
-    { label: 'General (generalPrograms)', value: 'generalPrograms' },
-    { label: 'Development (developmentPrograms)', value: 'developmentPrograms' },
-    { label: 'Browsers (browserPrograms)', value: 'browserPrograms' },
-    { label: 'Games (gamingPrograms)', value: 'gamingPrograms' },
-    { label: 'Social (socialNetworkPrograms)', value: 'socialNetworkPrograms' },
-    { label: 'Console (consolePrograms)', value: 'consolePrograms' },
+    ...dynamicCats.map(cat => ({ label: cat, value: cat })),
   ];
 
-  // Agregamos la opción Custom solo si el verbo es install
   if (verb === 'install') {
     items.push({ label: '-----------------------------------', value: 'separator' });
     items.push({ label: 'Custom - Seleccionar un programa específico', value: 'custom' });

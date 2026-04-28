@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Box, Text, useInput } from 'ink';
 import CustomTextInput from './CustomTextInput.jsx';
 import { getAllProgramsFlat, getProgramsByCategory, getProgramData } from '../../core/jsonLoader.js';
 import theme from '../../core/theme.json';
 
-const verbs = ['install', 'download', 'update', 'delete', 'id', 'utility', 'help', 'exit'];
+const OVERLAY_SIZE = 10; // Filas visibles en el overlay de sugerencias
+
+const verbs = ['install', 'download', 'update', 'delete', 'id', 'add', 'utility', 'help', 'exit'];
 const fallbackCategories = ['all', 'generalPrograms', 'developmentPrograms', 'browserPrograms', 'gamingPrograms', 'socialNetworkPrograms', 'consolePrograms'];
 
 const getDynamicCategories = (excludeAll = false) => {
@@ -27,8 +29,6 @@ function hslToHex(h, s, l) {
   return `#${f(0)}${f(8)}${f(4)}`;
 }
 
-
-
 const useRainbowBorder = () => {
   const [hue, setHue] = useState(0);
   useEffect(() => {
@@ -41,27 +41,17 @@ const useRainbowBorder = () => {
 };
 
 const getSuggestionsFor = (inputStr) => {
-  if (!inputStr.startsWith('/') || inputStr.length < 1) {
-    return [];
-  }
+  if (!inputStr.startsWith('/') || inputStr.length < 1) return [];
 
-  // Extrae comandos ignorando espacios extra, pero conserva el final si estás a mitad de escribir
   const rawParts = inputStr.match(/\S+/g) || [];
-  if (inputStr.match(/\s+$/)) {
-    rawParts.push('');
-  }
+  if (inputStr.match(/\s+$/)) rawParts.push('');
   const parts = rawParts;
   const currentPart = parts[parts.length - 1];
 
   if (parts.length === 1) {
     const query = currentPart.slice(1).toLowerCase();
-    if (verbs.includes(query)) {
-      parts.push('');
-    } else {
-      return verbs
-        .filter(v => v.startsWith(query))
-        .map(v => ({ label: `/${v}`, value: v, type: 'verb' }));
-    }
+    if (verbs.includes(query)) { parts.push(''); }
+    else return verbs.filter(v => v.startsWith(query)).map(v => ({ label: `/${v}`, value: v, type: 'verb' }));
   }
 
   if (parts.length === 2) {
@@ -73,50 +63,56 @@ const getSuggestionsFor = (inputStr) => {
     if (verbsWithParams.includes(verb)) {
       let options = getDynamicCategories(false);
       if (verb === 'install') options.push('custom');
+      if (options.includes(query)) { parts.push(''); }
+      else return options.filter(o => o.toLowerCase().startsWith(query)).map(o => ({ label: `--${o}`, value: o, type: 'param' }));
 
-      if (options.includes(query)) {
-        parts.push('');
-      } else {
-        return options
-          .filter(o => o.toLowerCase().startsWith(query))
-          .map(o => ({ label: `--${o}`, value: o, type: 'param' }));
-      }
     } else if (verb === 'id') {
-      const idOptions = ['list', 'add', 'delete', 'update'];
+      const idOptions = ['list', 'delete', 'update'];
+      if (idOptions.includes(query)) { parts.push(''); }
+      else return idOptions.filter(o => o.startsWith(query)).map(o => ({ label: o, value: o, type: 'id_subcmd' }));
 
-      if (idOptions.includes(query)) {
-        parts.push('');
-      } else {
-        return idOptions
-          .filter(o => o.startsWith(query))
-          .map(o => ({ label: o, value: o, type: 'id_subcmd' }));
-      }
+    } else if (verb === 'add') {
+      const addOptions = ['id', 'category'];
+      if (addOptions.includes(query)) { parts.push(''); }
+      else return addOptions.filter(o => o.startsWith(query)).map(o => ({ label: o, value: o, type: 'id_subcmd' }));
+
     } else if (verb === 'utility') {
       const utilOptions = ['addWin10', 'addWin11', 'exportDirectory', 'testColor'];
+      if (utilOptions.includes(query)) { parts.push(''); }
+      else return utilOptions.filter(o => o.toLowerCase().startsWith(query)).map(o => ({ label: o, value: o, type: 'id_subcmd' }));
 
-      if (utilOptions.includes(query)) {
-        parts.push('');
-      } else {
-        return utilOptions
-          .filter(o => o.toLowerCase().startsWith(query))
-          .map(o => ({ label: o, value: o, type: 'id_subcmd' }));
-      }
     } else {
       return [];
     }
   }
 
   if (parts.length === 3) {
+    const verbStr = parts[0].slice(1).toLowerCase();
     const currentParam = parts[1].toLowerCase();
+    const query3 = (parts[2] || '').toLowerCase();
+
+    // /install --custom <id>  y  /download --custom <id>  etc.
     if (currentParam === '--custom') {
-      const query = (parts[2] || '').toLowerCase();
       const allIds = getAllProgramsFlat();
-      return allIds
-        .filter(p => p.id.toLowerCase().includes(query))
-        .slice(0, 6)
-        .map(p => ({ label: p.id, value: p.id, type: 'id' }));
+      return allIds.filter(p => p.id.toLowerCase().includes(query3)).map(p => ({ label: p.id, value: p.id, type: 'id' }));
     }
 
+    // /id delete <id>  → tipo 'id' (auto-ejecuta al seleccionar)
+    // /id update <id>  → tipo 'id_partial' (completa pero espera el nuevo valor)
+    if (verbStr === 'id' && (currentParam === 'delete' || currentParam === 'update')) {
+      const allIds = getAllProgramsFlat();
+      return allIds.filter(p => p.id.toLowerCase().includes(query3)).map(p => ({
+        label: `${p.id} [${p.category}]`,
+        value: p.id,
+        type: currentParam === 'update' ? 'id_partial' : 'id'
+      }));
+    }
+
+    // /add id → muestra categorías para seleccionar destino
+    if (verbStr === 'add' && currentParam === 'id') {
+      const cats = getDynamicCategories(true); // sin 'all'
+      return cats.filter(c => c.toLowerCase().startsWith(query3)).map(c => ({ label: c, value: c, type: 'add_cat' }));
+    }
 
     return [];
   }
@@ -124,34 +120,28 @@ const getSuggestionsFor = (inputStr) => {
   return [];
 };
 
+// Overlay con ventana deslizante: muestra OVERLAY_SIZE filas del total
 const SuggestionOverlay = ({ suggestions, activeIndex, animatedBorder }) => {
   if (suggestions.length === 0) return null;
 
-  return (
-    <Box
-      flexDirection="column"
-      borderStyle="round"
-      borderColor={animatedBorder}
-      paddingX={1}
-      marginX={1}
-      marginBottom={0}
-      width={process.stdout.columns - 4}
-    >
-      {suggestions.map((s, i) => {
-        const isSelected = i === activeIndex;
-        const prefix = isSelected ? '❯ ' : '  ';
-        const rawText = `${prefix}${s.label}`;
-        // Llenando de espacios hasta el final del box para simular un background de fila completo
-        const targetWidth = (process.stdout.columns || 80) - 8;
-        const paddedText = rawText.padEnd(targetWidth, ' ');
+  const half = Math.floor(OVERLAY_SIZE / 2);
+  const start = Math.max(0, Math.min(activeIndex - half, suggestions.length - OVERLAY_SIZE));
+  const end = Math.min(suggestions.length, start + OVERLAY_SIZE);
+  const visible = suggestions.slice(start, end);
+  const targetWidth = (process.stdout.columns || 80) - 8;
 
+  return (
+    <Box flexDirection="column" borderStyle="round" borderColor={animatedBorder} paddingX={1} marginX={1} marginBottom={0} width={process.stdout.columns - 4}>
+      {suggestions.length > OVERLAY_SIZE && (
+        <Text dimColor>{activeIndex + 1}/{suggestions.length} resultados</Text>
+      )}
+      {visible.map((s, i) => {
+        const actualIndex = start + i;
+        const isSelected = actualIndex === activeIndex;
+        const prefix = isSelected ? '❯ ' : '  ';
+        const paddedText = `${prefix}${s.label}`.padEnd(targetWidth, ' ');
         return (
-          <Text
-            key={s.value}
-            color={theme.text.primary}
-            backgroundColor={isSelected ? theme.backgrounds.selection : undefined}
-            wrap="truncate"
-          >
+          <Text key={`${s.value}-${actualIndex}`} color={theme.text.primary} backgroundColor={isSelected ? theme.backgrounds.selection : undefined} wrap="truncate">
             {paddedText}
           </Text>
         );
@@ -164,16 +154,17 @@ const InteractiveShell = ({ onExecute, isExecuting }) => {
   const [input, setInput] = useState('');
   const [history, setHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
+  const historyIndexRef = useRef(-1); // ref para acceso síncrono en useInput
   const [cursorKey, setCursorKey] = useState(0);
   const [activeIndex, setActiveIndex] = useState(0);
   const [suggestions, setSuggestions] = useState([]);
-  const [suppressSuggestions, setSuppressSuggestions] = useState(false);
+  const suppressRef = useRef(false); // ref para suprimir sugerencias al navegar historial
   const animatedBorder = useRainbowBorder();
 
   useEffect(() => {
-    if (suppressSuggestions) {
-      setSuppressSuggestions(false);
-      setSuggestions([]); // Forzamos apagado temporal de predicciones al cargar historial
+    if (suppressRef.current) {
+      suppressRef.current = false;
+      setSuggestions([]);
       return;
     }
     setSuggestions(getSuggestionsFor(input));
@@ -193,7 +184,7 @@ const InteractiveShell = ({ onExecute, isExecuting }) => {
         setActiveIndex(prev => Math.min(suggestions.length - 1, prev + 1));
         return;
       }
-      if (key.tab || (key.return && suggestions.length > 0)) {
+      if (key.tab || key.return) {
         const selected = suggestions[activeIndex];
         const parts = input.match(/\S+/g) || [];
 
@@ -201,59 +192,63 @@ const InteractiveShell = ({ onExecute, isExecuting }) => {
         if (selected.type === 'verb') {
           newInput = `/${selected.value} `;
         } else if (selected.type === 'param') {
-          if (selected.value === 'custom') {
-            newInput = `${parts[0]} --custom `;
-          } else {
-            newInput = `${parts[0]} --${selected.value} `;
-          }
-        } else if (selected.type === 'id') {
+          newInput = selected.value === 'custom' ? `${parts[0]} --custom ` : `${parts[0]} --${selected.value} `;
+        } else if (selected.type === 'id' || selected.type === 'id_partial') {
           newInput = `${parts[0]} ${parts[1]} ${selected.value} `;
         } else if (selected.type === 'id_subcmd') {
           newInput = `${parts[0]} ${selected.value} `;
-        } else if (selected.type === 'id_category') {
+        } else if (selected.type === 'add_cat') {
+          // /add id <categoria> → el usuario escribe el winget ID
           newInput = `${parts[0]} ${parts[1]} ${selected.value} `;
-        } else if (selected.type === 'id_value') {
-          newInput = `${parts[0]} ${parts[1]} ${parts[2]} ${selected.value} `;
         }
+
         setInput(newInput);
         setSuggestions([]);
         setCursorKey(prev => prev + 1);
 
-        if (key.return) {
+        // id_subcmd e id_partial nunca auto-ejecutan (esperan más input del usuario)
+        if (key.return && selected.type !== 'id_subcmd' && selected.type !== 'id_partial') {
           const futureSuggestions = getSuggestionsFor(newInput);
           if (futureSuggestions.length === 0) {
-            setHistory(prev => [...prev, newInput.trim()]);
-            setHistoryIndex(-1);
-            onExecute(newInput.trim());
-            setInput('');
+            const trimmed = newInput.trim();
+            if (trimmed) {
+              setHistory(prev => [...prev, trimmed]);
+              historyIndexRef.current = -1;
+              setHistoryIndex(-1);
+              onExecute(trimmed);
+              setInput('');
+            }
           }
         }
         return;
       }
     }
 
-    // Historial (solo si no hay sugerencias explícitas abiertas en ese momento)
-    if (suggestions.length === 0 || suppressSuggestions) {
+    // Historial: activo cuando no hay sugerencias o ya se está navegando historial
+    if (suggestions.length === 0 || historyIndexRef.current >= 0) {
       if (key.upArrow && history.length > 0) {
-        const nextIndex = historyIndex + 1;
+        const nextIndex = historyIndexRef.current + 1;
         if (nextIndex < history.length) {
+          historyIndexRef.current = nextIndex;
           setHistoryIndex(nextIndex);
-          setSuppressSuggestions(true);
+          suppressRef.current = true;
           setInput(history[history.length - 1 - nextIndex]);
           setCursorKey(prev => prev + 1);
         }
         return;
       }
       if (key.downArrow) {
-        if (historyIndex > 0) {
-          const nextIndex = historyIndex - 1;
+        if (historyIndexRef.current > 0) {
+          const nextIndex = historyIndexRef.current - 1;
+          historyIndexRef.current = nextIndex;
           setHistoryIndex(nextIndex);
-          setSuppressSuggestions(true);
+          suppressRef.current = true;
           setInput(history[history.length - 1 - nextIndex]);
           setCursorKey(prev => prev + 1);
         } else {
+          historyIndexRef.current = -1;
           setHistoryIndex(-1);
-          setSuppressSuggestions(true);
+          suppressRef.current = true;
           setInput('');
           setCursorKey(prev => prev + 1);
         }
@@ -264,15 +259,16 @@ const InteractiveShell = ({ onExecute, isExecuting }) => {
     if (key.escape) {
       setInput('');
       setSuggestions([]);
+      historyIndexRef.current = -1;
       setHistoryIndex(-1);
     }
   });
 
   const handleSubmit = (value) => {
     if (value.trim() === '') return;
-    // Si hay sugerencias, el Enter arriba las maneja. Si no, ejecutamos.
     if (suggestions.length === 0) {
       setHistory(prev => [...prev, value]);
+      historyIndexRef.current = -1;
       setHistoryIndex(-1);
       onExecute(value);
       setInput('');
@@ -281,9 +277,7 @@ const InteractiveShell = ({ onExecute, isExecuting }) => {
 
   return (
     <Box flexDirection="column">
-      {/* Sugerencias arriba del input */}
       <SuggestionOverlay suggestions={suggestions} activeIndex={activeIndex} animatedBorder={theme.borders.default} />
-
       <Box borderStyle="round" borderColor={animatedBorder} paddingX={1} marginX={1} width={process.stdout.columns - 4}>
         <Text color={theme.text.secondary}>❯ </Text>
         <CustomTextInput
@@ -292,12 +286,12 @@ const InteractiveShell = ({ onExecute, isExecuting }) => {
           onChange={setInput}
           onSubmit={handleSubmit}
           disableSubmit={suggestions.length > 0}
-          placeholder='Escribe "/" para comandos222'
+          placeholder='Escribe "/" para ver comandos'
         />
       </Box>
       <Box marginLeft={1}>
-        <Text dimColor size="small">
-          <Text color={theme.text.warning}>↑↓</Text>: Navegar | <Text color={theme.text.warning}>Tab</Text>: Autocompletar | <Text color={theme.text.danger}>ESC</Text>: Limpiar
+        <Text dimColor>
+          <Text color={theme.text.warning}>↑↓</Text>: Navegar/Historial | <Text color={theme.text.warning}>Tab</Text>: Autocompletar | <Text color={theme.text.danger}>ESC</Text>: Limpiar
         </Text>
       </Box>
     </Box>
